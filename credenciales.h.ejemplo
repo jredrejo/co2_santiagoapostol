@@ -1,0 +1,9 @@
+// Credenciales para ThingSpeak:
+unsigned long myChannelNumber = numero_canal;
+const char * myWriteAPIKey = "tu_clave_API";
+
+/* En caso de usar wifi con essid y password conocido en lugar de WifiManager:
+const char* ssid = "essid";            // Aqui va ti identificador
+const char* password = "contraseña";        //Aqui va tu contraseña
+*/
+
