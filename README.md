@@ -25,8 +25,9 @@ Librerías de Arduino que hay que instalar :
 * https://github.com/arduino-libraries/NTPClient
 * https://www.arduino.cc/en/Reference/WiFi
 * https://github.com/adafruit/DHT-sensor-library
-* https://thingspeak.com/
 * https://github.com/tzapu/WiFiManager
+* https://pubsubclient.knolleary.net/
+* https://thingspeak.com/
 
 
 

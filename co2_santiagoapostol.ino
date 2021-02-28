@@ -1,7 +1,13 @@
 #include "credenciales.h"
 #include "opciones.h"
-#include <ThingSpeak.h>
 
+#if (use_thingspeak)
+#include <ThingSpeak.h>
+#endif
+
+#if (use_mqtt)
+#include <PubSubClient.h>
+#endif
 #include <WiFiManager.h>
 
 #include <strings_en.h>  // English strings for  WiFiManager
@@ -14,11 +20,16 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
-#define DHTTYPE DHT11
+
 
 WiFiManager wifiManager;
 
-WiFiClient  client;
+WiFiClient  cliente_wifi;
+
+#if (use_mqtt)
+PubSubClient mqtt_client(cliente_wifi);
+char msg[50];
+#endif
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
@@ -109,7 +120,7 @@ float medidaResistencia() {
   }
   // quitamos el minimo y el máximo:
   resistenciaMedia = resistenciaMedia - maximo - minimo;
-    
+
   return resistenciaMedia / (MQ_Samples - 2);
 }
 
@@ -154,8 +165,8 @@ void setup() {
   wifiManager.autoConnect("CO2");
 
   /*
-   * Si no se usa wifiManager porque el essid y passwd de la wifi son fijos:
-   * 
+     Si no se usa wifiManager porque el essid y passwd de la wifi son fijos:
+
      WiFi.begin(ssid, password); // Intentamos la conexion a la WIFI
 
     while (WiFi.status() != WL_CONNECTED)
@@ -170,15 +181,22 @@ void setup() {
   Serial.println("connected");
   server.on("/", handle_OnConnect);       // De esto tenemos que hablar
   server.onNotFound(handle_NotFound);
-
   server.begin();
-  ThingSpeak.begin(client);
+#if (use_thingspeak )
+  ThingSpeak.begin(cliente_wifi);
+#endif
+
   Serial.println("Iniciado el servidor HTTP");
   timeClient.begin();
   timeClient.setTimeOffset(3600); // GMT + 1
   tiempoInicial = millis();
 
+#if (use_mqtt)
+  mqtt_client.setServer(MQTT_Broker, MQTT_port);
+  mqtt_reconnect();
+#endif
 }
+
 
 void handle_NotFound()
 {
@@ -244,6 +262,25 @@ String SendHTML(float Temperaturestat, float Humiditystat, float Calibracion, fl
   return ptr;
 }
 
+#if (use_mqtt)
+void mqtt_reconnect() {
+  // Loop until we're reconnected
+  while (!mqtt_client.connected()) {
+    Serial.print("Intentando conexión MQTT...");
+    // Attempt to connect
+    if (mqtt_client.connect("arduinoClient")) {
+      Serial.println("Conectado al Broker");
+
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(mqtt_client.state());
+      Serial.println(" Se intentará de nuevo en 5 segundos");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+#endif
 
 void loop() {
   server.handleClient();
@@ -260,6 +297,7 @@ void loop() {
     Serial.print(" - ");
     Serial.println(ppmnormal);
 
+#if (use_thingspeak)
     // set the fields with the values
     ThingSpeak.setField(1, t);
     ThingSpeak.setField(2, h);
@@ -268,7 +306,20 @@ void loop() {
     ThingSpeak.setField(5, RZERO);
     ThingSpeak.setField(6, factorCorreccion(t, h));
     ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+#endif
 
+#if (use_mqtt)
+    if (!mqtt_client.connected()) {
+      mqtt_reconnect();
+    }
+    mqtt_client.loop();
+    snprintf (msg, 50, "t:%.2f;h:%.2f;ppm:%.0f", t, h, ppmcorregido);
+    Serial.print("MQTT topic: ");
+    Serial.println(topico);
+    Serial.print("MQTT msg: ");
+    Serial.println(msg);
+    mqtt_client.publish(topico, msg);
+#endif
 
   }
 
