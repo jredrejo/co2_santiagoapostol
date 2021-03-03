@@ -178,7 +178,7 @@ void setup() {
     Serial.print("Nuestra IP: ");
     Serial.println(WiFi.localIP());   // Imprimir nuestra IP al conectar
   */
-  Serial.println("connected");
+  Serial.println("conectado a la wifi");
   server.on("/", handle_OnConnect);       // De esto tenemos que hablar
   server.onNotFound(handle_NotFound);
   server.begin();
@@ -264,8 +264,10 @@ String SendHTML(float Temperaturestat, float Humiditystat, float Calibracion, fl
 
 #if (use_mqtt)
 void mqtt_reconnect() {
+  int intentos = 0;
+  const int max_intentos = 2; // no intentarlo más de estas veces
   // Loop until we're reconnected
-  while (!mqtt_client.connected()) {
+  while (!mqtt_client.connected() && intentos <= max_intentos) {
     Serial.print("Intentando conexión MQTT...");
     // Attempt to connect
     if (mqtt_client.connect("arduinoClient")) {
@@ -277,6 +279,7 @@ void mqtt_reconnect() {
       Serial.println(" Se intentará de nuevo en 5 segundos");
       // Wait 5 seconds before retrying
       delay(5000);
+      intentos++;
     }
   }
 }
