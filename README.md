@@ -35,3 +35,8 @@ Librerías de Arduino que hay que instalar :
 
 ![img](prototipo.jpg)
 
+
+
+## Esquema
+
+![](schema.png)
