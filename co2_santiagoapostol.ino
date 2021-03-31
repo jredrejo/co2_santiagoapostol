@@ -8,7 +8,7 @@
 #if (use_mqtt)
 #include <PubSubClient.h>
 #endif
-#include <WiFiManager.h>
+// #include <WiFiManager.h>
 
 #include <strings_en.h>  // English strings for  WiFiManager
 
@@ -20,9 +20,10 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
+#include <EEPROM.h>
 
 
-WiFiManager wifiManager;
+//WiFiManager wifiManager;
 
 WiFiClient  cliente_wifi;
 
@@ -73,6 +74,22 @@ unsigned long tiempoInicial;
 
 
 
+unsigned int leerWordEEPROM(int direccion) {
+  EEPROM.begin(2);
+  byte hiByte = EEPROM.read(direccion);
+  byte loByte = EEPROM.read(direccion + 1);
+  EEPROM.end();
+  return word(hiByte, loByte); // usa dos bytes para generar un integer
+}
+
+void escribirWordEEPROM(int direccion, int valor) {
+  EEPROM.begin(2);
+  byte hiByte = highByte(valor);
+  byte loByte = lowByte(valor);
+  EEPROM.write(direccion, hiByte);
+  EEPROM.write(direccion + 1, loByte);
+  EEPROM.end();
+}
 
 
 float factorCorreccion(float t, float h) {
@@ -109,6 +126,8 @@ float medidaResistencia() {
   for (int s = 0; s < MQ_Samples; s++)
   {
     int val = analogRead(MQ_PIN);
+    //Serial.print("val: ");
+    //Serial.println(val);
     //float resistenciaSensor = ((1023. / (float) val) * 5. - 1.) * RLOAD;
     float resistenciaSensor = ((1023. / (float) val)  - 1.) * RLOAD;
     if (resistenciaSensor > maximo)
@@ -161,23 +180,28 @@ void setup() {
   Serial.begin(9600);
   pinMode(DHTPin, INPUT);
   dht.begin();
+  delay(300);
   Serial.println("Conectando ");
-  wifiManager.autoConnect("CO2");
+
+  // wifiManager.autoConnect("CO2");
 
   /*
      Si no se usa wifiManager porque el essid y passwd de la wifi son fijos:
-
-     WiFi.begin(ssid, password); // Intentamos la conexion a la WIFI
-
-    while (WiFi.status() != WL_CONNECTED)
-       {  delay(1000);
-          Serial.print(".");      // Escribiendo puntitos hasta que conecte
-        }
-    Serial.println("");
-    Serial.println("WiFi connected..!");
-    Serial.print("Nuestra IP: ");
-    Serial.println(WiFi.localIP());   // Imprimir nuestra IP al conectar
   */
+  Serial.println(WiFi.macAddress());
+
+  WiFi.begin(ssid, password); // Intentamos la conexion a la WIFI
+
+  while (WiFi.status() != WL_CONNECTED)
+  { delay(1000);
+
+    Serial.print(".");      // Escribiendo puntitos hasta que conecte
+  }
+  Serial.println("");
+  Serial.println("WiFi connected..!");
+  Serial.print("Nuestra IP: ");
+  Serial.println(WiFi.localIP());   // Imprimir nuestra IP al conectar
+
   Serial.println("conectado a la wifi");
   server.on("/", handle_OnConnect);       // De esto tenemos que hablar
   server.onNotFound(handle_NotFound);
@@ -189,12 +213,21 @@ void setup() {
   Serial.println("Iniciado el servidor HTTP");
   timeClient.begin();
   timeClient.setTimeOffset(3600); // GMT + 1
-  tiempoInicial = millis();
+  tiempoInicial = millis() + intervalo;  //para forzar una lectura en el primer loop
 
 #if (use_mqtt)
   mqtt_client.setServer(MQTT_Broker, MQTT_port);
   mqtt_reconnect();
 #endif
+
+  RZERO = leerWordEEPROM(RZERO_ADDR);
+
+  if (RZERO == 0 || RZERO > 1000)  // no se ha grabado nada antes
+  {
+    RZERO = default_RZERO;
+    escribirWordEEPROM(RZERO_ADDR, RZERO);
+  }
+
 }
 
 
@@ -266,7 +299,7 @@ String SendHTML(float Temperaturestat, float Humiditystat, float Calibracion, fl
 void mqtt_reconnect() {
   int intentos = 0;
   const int max_intentos = 2; // no intentarlo más de estas veces
-  // Loop until we're reconnected
+  // bucle intentando conectar:
   while (!mqtt_client.connected() && intentos <= max_intentos) {
     Serial.print("Intentando conexión MQTT...");
     // Attempt to connect
@@ -277,7 +310,6 @@ void mqtt_reconnect() {
       Serial.print("failed, rc=");
       Serial.print(mqtt_client.state());
       Serial.println(" Se intentará de nuevo en 5 segundos");
-      // Wait 5 seconds before retrying
       delay(5000);
       intentos++;
     }
@@ -292,13 +324,22 @@ void loop() {
     tiempoInicial = millis();
     t = dht.readTemperature() + (float)calT;         // Leemos la temperatura
     h = dht.readHumidity() + (float)calH;               // Leemos la humedad
-
+    float cal = obtenerCalibracionCorregida(t, h);
     float ppmcorregido = ppmCorregido(t, h);
+    if (ppmcorregido < ATMOCO2) { //autocalibrado a ppm mínimo
+      RZERO = cal;
+      escribirWordEEPROM(RZERO_ADDR, RZERO);
+      ppmcorregido = ppmCorregido(t, h);
+    }
     float ppmnormal = ppm();
     Serial.print("ppm: ");
     Serial.print(ppmcorregido);
     Serial.print(" - ");
     Serial.println(ppmnormal);
+
+
+    Serial.print("Calibracion: ");
+    Serial.println(cal);
 
 #if (use_thingspeak)
     // set the fields with the values
@@ -307,7 +348,8 @@ void loop() {
     ThingSpeak.setField(3, ppmcorregido);
     ThingSpeak.setField(4, ppmnormal);
     ThingSpeak.setField(5, RZERO);
-    ThingSpeak.setField(6, factorCorreccion(t, h));
+    ThingSpeak.setField(6, cal);
+
     ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
 #endif
 
@@ -318,11 +360,12 @@ void loop() {
     mqtt_client.loop();
     snprintf (msg, 50, "t:%.2f;h:%.2f;ppm:%.0f", t, h, ppmcorregido);
     Serial.print("MQTT topic: ");
-    Serial.println(topico);
+    Serial.println(tema);
     Serial.print("MQTT msg: ");
     Serial.println(msg);
-    mqtt_client.publish(topico, msg);
+    mqtt_client.publish(tema, msg);
 #endif
+
 
   }
 

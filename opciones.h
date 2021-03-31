@@ -1,36 +1,33 @@
-#define calT -2.2  //calibración sensor T
-#define calH 12.0    // calibración sensor H
+#define calT -0.7  //calibración sensor T
+#define calH -1.2    // calibración sensor H
 
 /*  Nivel CO2 en la atmósfera para calibrar,
     Nivel medio en diciembre según https://es.greenpeace.org/es/sala-de-prensa/comunicados/maximo-historico-de-concentraciones-de-co2-en-la-atmosfera/
   #define ATMOCO2 414.0
 */
 
-#define ATMOCO2 435  // Medido en atmósfera en Mérida a 20º usando un medidor calibrado 
+#define ATMOCO2 415  // Medido en atmósfera en Mérida a 20º usando un medidor calibrado 
 
 /// Resistencia en KOhmios que lleva la tarjeta del MQ135:
 #define RLOAD 10
 
+const int RZERO_ADDR = 0; // dirección EEPROM para guardar RZERO
+#define default_RZERO  445.0 // calculado a 20ºC
+
 /// Factor de calibración obtenido mediante obtenerCalibracion()
-// #define RZERO 547 // calculado a 12ºC
-//#define RZERO 375 // calculado a 15ºC
-#define RZERO 492 // calculado a 17ºC
-//#define RZERO 511 // calculado a 18ºC
-//#define RZERO 515 // calculado a 20ºC
-//#define RZERO 485 // 21ºC
-//#define RZERO 414 //24º
+float RZERO;
 
 
 #define DHTTYPE DHT11  //Tipo de sensor de Tª ambiente y humedad
 
 // Usar mqtt
-#define use_mqtt 1 // Comentar esta línea si no se usa MQTT
-#define MQTT_Broker  "192.168.0.28"
+// #define use_mqtt 1 // Comentar esta línea si no se usa MQTT
+#define MQTT_Broker  "192.168.0.39"
 #define MQTT_port 1883
 #define DISPOSITIVO "aula25" // Dispositivo que identifica al publicar en MQTT
 #define RAIZ "santiagoapostol/calidad_aire"  //raiz de la ruta donde va a publicar
-String topico_string =  String(RAIZ) + "/" + String(DISPOSITIVO);
-const char* topico = topico_string.c_str();
+String tema_string =  String(RAIZ) + "/" + String(DISPOSITIVO);
+const char* tema = tema_string.c_str();
 
 //Usar ThingSpeak
 #define use_thingspeak 1  // Comentar esta línea si no se usa ThingSpeak
