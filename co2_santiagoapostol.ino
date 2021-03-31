@@ -89,6 +89,7 @@ void escribirWordEEPROM(int direccion, int valor) {
   EEPROM.write(direccion, hiByte);
   EEPROM.write(direccion + 1, loByte);
   EEPROM.end();
+  Serial.println("Escribiendo el valor " + (String)valor + " en " + (String)direccion);
 }
 
 
@@ -204,6 +205,7 @@ void setup() {
 
   Serial.println("conectado a la wifi");
   server.on("/", handle_OnConnect);       // De esto tenemos que hablar
+  server.on("/SetCal", HTTP_POST, handle_Parametros);
   server.onNotFound(handle_NotFound);
   server.begin();
 #if (use_thingspeak )
@@ -231,9 +233,49 @@ void setup() {
 }
 
 
+void handle_Parametros()
+{
+
+  if (server.hasArg("plain") == false) { //Check if body received
+
+    server.send(200, "text/plain", "No se ha recibido nada");
+    return;
+
+  }
+
+  Serial.println("post:");
+  Serial.println(server.arg("plain"));
+
+  // mostrar por puerto serie
+  Serial.println(server.argName(0));
+
+
+  String webPIN = server.arg(String("pin"));
+  String rzero = server.arg(String("rzero"));
+  String atm = server.arg(String("atm"));
+  Serial.print("PIN:\t");
+  Serial.println(webPIN);
+  Serial.print("Atm:\t");
+  Serial.println(atm);
+  Serial.print("rzero:\t");
+  Serial.println(rzero);
+
+  if (webPIN != (String)PIN)
+    server.send(403, "text/plain", "PIN incorrecto");
+
+  if (rzero != "") {
+    RZERO = rzero.toFloat();
+    escribirWordEEPROM(RZERO_ADDR, RZERO);
+  }
+  
+  server.sendHeader("Location", String("/"), true);
+  server.send( 302, "text/plain", "");
+
+}
+
 void handle_NotFound()
 {
-  server.send(404, "text/plain", "Ni idea de a dónde quieres ir pringao");
+  server.send(404, "text/plain", "Lo que has intentado no existe");
 }
 
 void handle_OnConnect()
@@ -272,7 +314,7 @@ String SendHTML(float Temperaturestat, float Humiditystat, float Calibracion, fl
   ptr += "<body>\n";
   ptr += "<div id=\"webpage\">\n";
   ptr += "<h1>Nodo medida CO<sub>2</sub> IES Santiago Apóstol</h1>\n";
-  ptr += "<h2>Nodo 1</h2>\n";
+  ptr += "<h2>Nodo " + (String)DISPOSITIVO + "</h2>\n";
   ptr += "<h3>" +  timeClient.getFormattedTime() + "</h3>\n";
   ptr += "<p>Temperatura: ";
   ptr += Temperaturestat;
@@ -288,8 +330,16 @@ String SendHTML(float Temperaturestat, float Humiditystat, float Calibracion, fl
   ptr += " - ";
   ptr += (int)ppm;
   ptr += "</p>";
-
   ptr += "</div>\n";
+
+  ptr += "<form action=\"/SetCal\" method=\"post\"> <fieldset>\n";
+  ptr += "<h2>Recalibración (necesita PIN):</h2>\n";
+  ptr += "Factor:<input type=\"text\" name=\"rzero\" value=\"\">\n";
+  ptr += "Atmósfera:<input type=\"text\" name=\"atm\" value=\"\"><br>\n";
+  ptr += "PIN: <input type=\"password\" name=\"pin\" value=\"0000\">\n";
+  ptr += "<button type=\"submit\">Enviar</button>\n";
+  ptr += "</fieldset></form>\n";
+
   ptr += "</body>\n";
   ptr += "</html>\n";
   return ptr;

@@ -21,7 +21,7 @@ float RZERO;
 #define DHTTYPE DHT11  //Tipo de sensor de Tª ambiente y humedad
 
 // Usar mqtt
-// #define use_mqtt 1 // Comentar esta línea si no se usa MQTT
+//#define use_mqtt 1 // Comentar esta línea si no se usa MQTT
 #define MQTT_Broker  "192.168.0.39"
 #define MQTT_port 1883
 #define DISPOSITIVO "aula25" // Dispositivo que identifica al publicar en MQTT

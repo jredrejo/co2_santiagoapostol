@@ -7,3 +7,4 @@ const char* ssid = "essid";            // Aqui va ti identificador
 const char* password = "contraseña";        //Aqui va tu contraseña
 */
 
+const char* PIN="0000";  // Pin para cambiar la calibración
