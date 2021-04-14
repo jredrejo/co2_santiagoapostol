@@ -222,7 +222,10 @@ void setup() {
   mqtt_reconnect();
 #endif
 
-  RZERO = leerWordEEPROM(RZERO_ADDR);
+//escribirWordEEPROM(RZERO_ADDR, RZERO);
+   RZERO = leerWordEEPROM(RZERO_ADDR);
+   Serial.print("Zero de la EEPROM:");
+   Serial.println(RZERO);
 
   if (RZERO == 0 || RZERO > 1000)  // no se ha grabado nada antes
   {
@@ -288,6 +291,8 @@ void handle_OnConnect()
   float cal = obtenerCalibracionCorregida(t, h);
   Serial.print("Calibracion: ");
   Serial.println(cal);
+  Serial.print("rzero:");
+  Serial.println(RZERO);
 
   float ppmcorregido = ppmCorregido(t, h);
   float ppmnormal = ppm();
