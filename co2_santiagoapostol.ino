@@ -136,7 +136,7 @@ float medidaResistencia() {
     if (resistenciaSensor < minimo)
       minimo = resistenciaSensor;
     resistenciaMedia = resistenciaMedia + resistenciaSensor;
-    delay(100);
+    delay(10);
   }
   // quitamos el minimo y el máximo:
   resistenciaMedia = resistenciaMedia - maximo - minimo;
@@ -204,10 +204,7 @@ void setup() {
   Serial.println(WiFi.localIP());   // Imprimir nuestra IP al conectar
 
   Serial.println("conectado a la wifi");
-  server.on("/", handle_OnConnect);       // De esto tenemos que hablar
-  server.on("/SetCal", HTTP_POST, handle_Parametros);
-  server.onNotFound(handle_NotFound);
-  server.begin();
+  ;
 #if (use_thingspeak )
   ThingSpeak.begin(cliente_wifi);
 #endif
@@ -222,16 +219,21 @@ void setup() {
   mqtt_reconnect();
 #endif
 
-//escribirWordEEPROM(RZERO_ADDR, RZERO);
-   RZERO = leerWordEEPROM(RZERO_ADDR);
-   Serial.print("Zero de la EEPROM:");
-   Serial.println(RZERO);
+  //escribirWordEEPROM(RZERO_ADDR, default_RZERO);
+  RZERO = leerWordEEPROM(RZERO_ADDR);
+  Serial.print("Zero de la EEPROM:");
+  Serial.println(RZERO);
 
   if (RZERO == 0 || RZERO > 1000)  // no se ha grabado nada antes
   {
     RZERO = default_RZERO;
     escribirWordEEPROM(RZERO_ADDR, RZERO);
   }
+
+  server.on("/", handle_OnConnect);       // De esto tenemos que hablar
+  server.on("/SetCal", HTTP_POST, handle_Parametros);
+  server.onNotFound(handle_NotFound);
+  server.begin();
 
 }
 
@@ -270,7 +272,7 @@ void handle_Parametros()
     RZERO = rzero.toFloat();
     escribirWordEEPROM(RZERO_ADDR, RZERO);
   }
-  
+
   server.sendHeader("Location", String("/"), true);
   server.send( 302, "text/plain", "");
 
@@ -284,15 +286,10 @@ void handle_NotFound()
 void handle_OnConnect()
 {
   // Esto se va a usar sólo para obtener el valor de calibración
-
   t = dht.readTemperature() + (float)calT;          // Leemos la temperatura
   h = dht.readHumidity() + (float)calH;                // Leemos la humedad
 
   float cal = obtenerCalibracionCorregida(t, h);
-  Serial.print("Calibracion: ");
-  Serial.println(cal);
-  Serial.print("rzero:");
-  Serial.println(RZERO);
 
   float ppmcorregido = ppmCorregido(t, h);
   float ppmnormal = ppm();
@@ -306,7 +303,9 @@ void handle_OnConnect()
 String SendHTML(float Temperaturestat, float Humiditystat, float Calibracion, float ppm, float correctedPpm) {
 
   String ptr = "<!DOCTYPE html> <html>\n";
+
   timeClient.update();
+
   ptr += "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
   ptr += "<meta charset=\"UTF-8\">";
   // ptr += "<meta http-equiv=\"refresh\" content=\"10\">";
@@ -329,6 +328,9 @@ String SendHTML(float Temperaturestat, float Humiditystat, float Calibracion, fl
   ptr += "%</p>";
   ptr += "<p>Calibración: ";
   ptr += (int)Calibracion;
+  ptr += "</p>";
+  ptr += "<p>RZERO: ";
+  ptr += (int)RZERO;
   ptr += "</p>";
   ptr += "<p>Lecturas (normalizada según Tª y Humedad) - bruta: ";
   ptr += (int)correctedPpm;
@@ -365,7 +367,7 @@ void mqtt_reconnect() {
       Serial.print("failed, rc=");
       Serial.print(mqtt_client.state());
       Serial.println(" Se intentará de nuevo en 5 segundos");
-      delay(5000);
+      delay(1000);
       intentos++;
     }
   }
@@ -382,9 +384,12 @@ void loop() {
     float cal = obtenerCalibracionCorregida(t, h);
     float ppmcorregido = ppmCorregido(t, h);
     if (ppmcorregido < ATMOCO2) { //autocalibrado a ppm mínimo
+
       RZERO = cal;
       escribirWordEEPROM(RZERO_ADDR, RZERO);
       ppmcorregido = ppmCorregido(t, h);
+      if (ppmcorregido < ATMOCO2 ) ppmcorregido = ATMOCO2;
+
     }
     float ppmnormal = ppm();
     Serial.print("ppm: ");
@@ -395,6 +400,10 @@ void loop() {
 
     Serial.print("Calibracion: ");
     Serial.println(cal);
+
+    Serial.print("rzero:");
+    Serial.println(RZERO);
+
 
 #if (use_thingspeak)
     // set the fields with the values
