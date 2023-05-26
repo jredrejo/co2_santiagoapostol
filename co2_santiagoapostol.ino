@@ -265,8 +265,10 @@ void handle_Parametros()
   Serial.print("rzero:\t");
   Serial.println(rzero);
 
-  if (webPIN != (String)PIN)
+  if (webPIN != (String)PIN){
     server.send(403, "text/plain", "PIN incorrecto");
+    return;
+  }
 
   if (rzero != "") {
     RZERO = rzero.toFloat();
