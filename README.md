@@ -6,8 +6,7 @@ Medidor de CO2 y condiciones ambientales de las aulas del IES Santiago Apóstol
 
 
 ## Construcción:
-* Sensor de humedad y temperatura ambiente DHT11
-* Sensor de CO2 MQ135
+* Sensor de CO2 MHZ19
 * Placa Nodemcu versión 2
 
 
@@ -16,18 +15,22 @@ Medidor de CO2 y condiciones ambientales de las aulas del IES Santiago Apóstol
 
 Es necesario usar el IDE de Arduino, preparado para compilar software con el esp8266. Hay instrucciones en español en https://www.naylampmechatronics.com/blog/56_usando-esp8266-con-el-ide-de-arduino.html
 
-Una vez preparado el IDE de Arduino es necesario añadir un archivo llamado credenciales.h con las contraseñas necesarias para conectar a ThingSpeak o al broker mqtt, así como las credenciales del punto de acceso Wifi al que se va a conectar si no se usa la opción (predeterminada) de WiFiManager
-
+Una vez preparado el IDE de Arduino es necesario añadir un archivo llamado credenciales.h con las contraseñas necesarias para conectar al broker mqtt, así como las credenciales del punto de acceso Wifi al que se va a conectar.
 
 
 Librerías de Arduino que hay que instalar :
 
 * https://github.com/arduino-libraries/NTPClient
 * https://www.arduino.cc/en/Reference/WiFi
-* https://github.com/adafruit/DHT-sensor-library
-* https://github.com/tzapu/WiFiManager
+* https://github.com/esp8266/Arduino
 * https://pubsubclient.knolleary.net/
-* https://thingspeak.com/
+* https://github.com/malokhvii-eduard/arduino-mhz19
+
+
+#include <MHZ19.h>
+#include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
 
 
 
@@ -40,3 +43,7 @@ Librerías de Arduino que hay que instalar :
 ## Esquema
 
 ![](schema.png)
+
+## Pinout del MH-z19
+
+![](mhz219pinout.png)
